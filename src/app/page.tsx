@@ -1,103 +1,170 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+import { useState, type FormEvent, type ChangeEvent } from 'react';
+import { Input, Button } from '@headlessui/react';
+import Image from 'next/image';
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+// Define a type for the successful response from our API route
+interface ChatResponse {
+	reply: string;
+}
+
+export default function ChatBox(): JSX.Element {
+	let thinkingInterval: NodeJS.Timeout | null = null;
+
+	// Explicitly type the state variables as string
+	const [input, setInput] = useState<string>('');
+	const [userInput, setUserInput] = useState<string>('');
+	const [roasterImage, setRoasterImage] = useState<string>('neutral');
+	const [response, setResponse] = useState<string>('Go on. Roast me.');
+	const [isLoading, setIsLoading] = useState<boolean>(false);
+
+	// Handles changes to the input box.
+	const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+		setInput(e.target.value);
+	};
+
+	// Handles the form submission to send the message to the backend API route.
+	const handleSend = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+		e.preventDefault(); // Prevent the default form submission (page reload)
+
+		if (!input.trim()) return; // Don't send empty messages
+
+		setIsLoading(true);
+		setResponse(''); // Clear previous response
+		setUserInput(input.trim());
+		const userMessage: string = input.trim();
+		setInput(''); // Clear the input box immediately
+		roasterThinking();
+
+		try {
+			// Send the user's message to the custom Next.js API route
+			const apiResponse = await fetch('/api/chat', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				// Send the user's message in the request body
+				body: JSON.stringify({ message: userMessage }),
+			});
+
+			// The data could be a ChatResponse or an error object { error: string }
+			const data: ChatResponse | { error: string } =
+				await apiResponse.json();
+
+			if (!apiResponse.ok) {
+				// Throw error if the response is not ok
+				console.error('API Error:', data);
+				throw new Error(
+					'Go fuck yourself. I wont spend any more time with you.'
+				);
+			}
+
+			// Type check the successful response
+			const successData = data as ChatResponse;
+			setResponse(successData.reply);
+		} catch (err) {
+			console.error('API Error:', err);
+			setResponse(
+				'Go fuck yourself. I wont spend any more time with you.'
+			);
+		} finally {
+			setIsLoading(false);
+			roasterTalking();
+		}
+	};
+
+	return (
+		<div className='p-24 w-full flex flex-col items-center'>
+			<Image
+				src={`/the_roaster_${roasterImage}.png`}
+				alt='The Roaster'
+				width={400}
+				height={800}
+			/>
+
+			<div className='w-[400px] pt-8'>
+				{userInput !== '' ? (
+					<div className='w-3/4 flex flex-col items-end ml-auto'>
+						<div>Crowd</div>
+						<div className='bg-gray-700 text-white px-4 py-2 font-semibold text-2xl max-w-max opacity-60'>
+							{'"' + userInput + '"'}
+						</div>
+					</div>
+				) : (
+					''
+				)}
+
+				{response !== '' ? (
+					<div className='w-3/4'>
+						<div>The Roaster</div>
+						<div className='bg-gray-700 text-white px-4 py-2 font-semibold text-2xl max-w-max opacity-60'>
+							{'"' + response + '"'}
+						</div>
+					</div>
+				) : (
+					''
+				)}
+
+				<form onSubmit={handleSend} className='flex gap-4 mt-8'>
+					<Input
+						type='text'
+						value={input}
+						onChange={handleInputChange}
+						placeholder='Roast me'
+						disabled={isLoading}
+						className='px-4 py-2 outline-1 grow'
+					/>
+					<Button
+						type='submit'
+						disabled={isLoading || !input.trim()} // Also disable if input is empty
+						className='px-4 py-2 bg-red-800 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+					>
+						{isLoading ? 'Thinking...' : 'Tell'}
+					</Button>
+				</form>
+			</div>
+		</div>
+	);
+
+	function roasterThinking(): void {
+		// If already thinking, do nothing
+		if (thinkingInterval) return;
+
+		const speed = 300;
+
+		thinkingInterval = setInterval(() => {
+			setRoasterImage((prev) =>
+				prev === 'thinking_1' ? 'thinking_2' : 'thinking_1'
+			);
+		}, speed);
+	}
+
+	function roasterTalking(): void {
+		const speed = 150;
+
+		// Stop thinking before talking
+		if (thinkingInterval) {
+			clearInterval(thinkingInterval);
+			thinkingInterval = null;
+		}
+
+		// Start with talking animation
+		setRoasterImage('talking');
+
+		let count = 0;
+		const cycles = 10;
+
+		const talkInterval = setInterval(() => {
+			setRoasterImage((prev) =>
+				prev === 'neutral' ? 'talking' : 'neutral'
+			);
+			count++;
+
+			if (count >= cycles * 2) {
+				clearInterval(talkInterval);
+				setRoasterImage('neutral');
+			}
+		}, speed);
+	}
 }
