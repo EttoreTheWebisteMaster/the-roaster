@@ -1,152 +1,243 @@
 'use client';
 
-import { useState, type FormEvent, type ChangeEvent } from 'react';
+import {
+	useState,
+	useRef,
+	useEffect,
+	type FormEvent,
+	type ChangeEvent,
+} from 'react';
 import { Input, Button } from '@headlessui/react';
 import Image from 'next/image';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
-// Define a type for the successful response from our API route
 interface ChatResponse {
 	reply: string;
+}
+
+interface ChatMessage {
+	role: 'user' | 'model';
+	text: string;
 }
 
 export default function ChatBox(): JSX.Element {
 	let thinkingInterval: NodeJS.Timeout | null = null;
 
-	// Explicitly type the state variables as string
 	const [input, setInput] = useState<string>('');
-	const [userInput, setUserInput] = useState<string>('');
-	const [roasterImage, setRoasterImage] = useState<string>('neutral');
-	const [response, setResponse] = useState<string>('Go on. Roast me.');
-	const [isLoading, setIsLoading] = useState<boolean>(false);
+	const [roasterImage, setRoasterImage] = useState<string>('thinking_1');
+	const [isLoading, setIsLoading] = useState<boolean>(true);
+	const [history, setHistory] = useState<ChatMessage[]>([]);
 
-	// Handles changes to the input box.
+	const chatContainerRef = useRef<HTMLDivElement | null>(null);
+	const inputRef = useRef<HTMLInputElement | null>(null);
+
+	const [loadedImage, setLoadedImage] = useState(roasterImage);
+
+	useEffect(() => {
+		const img = new window.Image();
+		img.src = `/the_roaster_${roasterImage}.png`;
+		img.onload = () => setLoadedImage(roasterImage);
+	}, [roasterImage]);
+
+
+	// Focus input whenever AI finishes
+	useEffect(() => {
+		if (!isLoading && inputRef.current) {
+			inputRef.current.focus();
+		}
+	}, [isLoading]);
+
+	// Scroll to bottom helper
+	const scrollToBottom = (): void => {
+		if (chatContainerRef.current) {
+			chatContainerRef.current.scrollTop =
+				chatContainerRef.current.scrollHeight;
+		}
+	};
+
+	// Auto-scroll when messages are added
+	useEffect(() => {
+		scrollToBottom();
+	}, [history]);
+
+	// === Word-by-word printing only for AI messages ===
+	const printAIMessage = (text: string) => {
+		const words = text.split(' ');
+		let currentText = '';
+		let i = 0;
+
+		setIsLoading(true);
+		const interval = setInterval(() => {
+			currentText += (i === 0 ? '' : ' ') + words[i];
+			setHistory((prev) => {
+				const newHistory = [...prev];
+				if (newHistory[newHistory.length - 1]?.role === 'model') {
+					newHistory[newHistory.length - 1].text = currentText;
+				} else {
+					newHistory.push({ role: 'model', text: currentText });
+				}
+				return newHistory;
+			});
+
+			i++;
+			if (i >= words.length) {
+				clearInterval(interval);
+				setIsLoading(false);
+			}
+		}, 100);
+	};
+
+	// Fetch the first AI message on mount
+	useEffect(() => {
+		roasterThinking();
+
+		const fetchInitialMessage = async () => {
+			try {
+				const res = await fetch('/api/chat/init');
+				const data: { firstMessage: string } = await res.json();
+				const firstMessage =
+					data.firstMessage || 'How are you doing today?';
+				roasterTalking(firstMessage.split(' ').length);
+				printAIMessage(firstMessage);
+			} catch (err) {
+				console.error('Failed to load initial message', err);
+				const fallback = 'How are you doing today?';
+				roasterTalking(fallback.split(' ').length);
+				printAIMessage(fallback);
+			}
+		};
+
+		fetchInitialMessage();
+	}, []);
+
 	const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
 		setInput(e.target.value);
 	};
 
-	// Handles the form submission to send the message to the backend API route.
 	const handleSend = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
-		e.preventDefault(); // Prevent the default form submission (page reload)
+		e.preventDefault();
+		if (!input.trim()) return;
 
-		if (!input.trim()) return; // Don't send empty messages
-
-		setIsLoading(true);
-		setResponse(''); // Clear previous response
-		setUserInput(input.trim());
-		const userMessage: string = input.trim();
-		setInput(''); // Clear the input box immediately
+		const userMessage = input.trim();
+		setInput('');
 		roasterThinking();
+		setIsLoading(true);
+
+		// Add user message instantly
+		setHistory((prev) => [...prev, { role: 'user', text: userMessage }]);
 
 		try {
-			// Send the user's message to the custom Next.js API route
 			const apiResponse = await fetch('/api/chat', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				// Send the user's message in the request body
-				body: JSON.stringify({ message: userMessage }),
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ message: userMessage, history }),
 			});
 
-			// The data could be a ChatResponse or an error object { error: string }
 			const data: ChatResponse | { error: string } =
 				await apiResponse.json();
 
-			if (!apiResponse.ok) {
-				// Throw error if the response is not ok
-				console.error('API Error:', data);
-				throw new Error(
-					'You know what? I don\'t care.'
-				);
-			}
+			if (!apiResponse.ok)
+				throw new Error("You know what? I don't care.");
 
-			// Type check the successful response
-			const successData = data as ChatResponse;
-			setResponse(successData.reply);
-			roasterTalking(successData.reply.split(' ').length);
+			const aiReply = (data as ChatResponse).reply;
+			roasterTalking(aiReply.split(' ').length);
+			printAIMessage(aiReply);
 		} catch (err) {
-			console.error('API Error:', err);
-			setResponse(
-				'You know what? I don\'t care.'
-			);
+			console.error(err);
 			roasterTalking();
-		} finally {
-			setIsLoading(false);
+			printAIMessage("You know what? I don't care.");
 		}
 	};
 
 	return (
-		<div className='p-12 w-full flex flex-col items-center'>
-			<Image
-				src={`/the_roaster_${roasterImage}.png`}
-				alt='The Roaster'
-				width={400}
-				height={800}
-				className='rounded-lg'
-			/>
-
-			<div className='w-[400px] pt-8'>
-				{userInput !== '' ? (
-					<div className='w-3/4 flex flex-col items-end ml-auto'>
-						<div className='mr-2'>Crowd</div>
-						<div className='bg-red-800 text-white px-4 py-3 font-semibold text-xl max-w-max rounded-lg'>
-							{userInput}
-						</div>
-					</div>
-				) : (
-					''
-				)}
-
-				{response !== '' ? (
-					<div className='w-3/4 mb-4 pb-18'>
-						<div className='ml-2'>The Roaster</div>
-						<div className='bg-gray-950 text-white px-4 py-3 font-semibold text-xl max-w-max rounded-lg'>
-							{response}
-						</div>
-					</div>
-				) : (
-					''
-				)}
-
-				<form
-					onSubmit={handleSend}
-					className='flex gap-2 pt-2 fixed w-[400px] bottom-0 pb-8 bg-white'
-				>
-					<Input
-						type='text'
-						value={input}
-						onChange={handleInputChange}
-						placeholder={
-							isLoading
-								? 'The Roaster is thinking...'
-								: 'Roast me...'
-						}
-						disabled={isLoading}
-						className='px-6 py-2 h-[52px] bg-gray-100 grow rounded-full disabled:bg-transparent outline-0'
-					/>
-					{!isLoading ? (
-						<Button
-							type='submit'
-							disabled={isLoading || !input.trim()} // Also disable if input is empty
-							className='p-4 rounded-full bg-red-800 font-bold text-xl text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
-						>
-							<PaperAirplaneIcon className='size-5' />
-						</Button>
-					) : (
-						''
-					)}
-				</form>
+		<div className='flex flex-col items-center w-full h-screen bg-white overflow-hidden'>
+			{/* Image fixed at top */}
+			<div className='w-full flex justify-center p-4'>
+				<Image
+					src={`/the_roaster_${loadedImage}.png`}
+					alt='The Roaster'
+					width={400}
+					height={800}
+					priority
+					className='rounded-lg'
+				/>
 			</div>
+
+			{/* Chat container */}
+			<div
+				ref={chatContainerRef}
+				className='flex flex-col w-full max-w-[400px] flex-grow px-4 pt-4 mb-24 space-y-6 overflow-y-auto scrollbar-hide'
+			>
+				{history.map((msg, idx) => (
+					<div key={idx} className='flex flex-col'>
+						<div
+							className={`text-sm mb-1 ${
+								msg.role === 'user'
+									? 'text-red-800 mr-2 text-right'
+									: 'text-gray-700 ml-2 text-left'
+							}`}
+						>
+							{msg.role === 'user' ? 'Crowd' : 'The Roaster'}
+						</div>
+						<div
+							className={`px-4 py-3 font-semibold text-xl rounded-lg max-w-[80%] break-words ${
+								msg.role === 'user'
+									? 'bg-red-800 text-white self-end'
+									: 'bg-gray-950 text-white self-start'
+							}`}
+						>
+							{msg.text}
+						</div>
+					</div>
+				))}
+			</div>
+
+			{/* Input fixed at bottom */}
+			<form
+				onSubmit={handleSend}
+				className='flex flex-row gap-2 w-full max-w-[400px] fixed bottom-0 pb-8 bg-white px-4 mx-auto'
+			>
+				<Input
+					ref={inputRef}
+					type='text'
+					value={input}
+					onChange={handleInputChange}
+					placeholder={
+						isLoading ? 'The Roaster is thinking...' : 'Roast me...'
+					}
+					disabled={isLoading}
+					className='px-4 py-2 h-[52px] bg-gray-100 flex-grow rounded-full disabled:bg-transparent outline-none w-full max-w-[300px] sm:max-w-[400px]'
+				/>
+				{!isLoading && (
+					<Button
+						type='submit'
+						disabled={isLoading || !input.trim()}
+						className='p-4 rounded-full bg-red-800 font-bold text-xl text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+					>
+						<PaperAirplaneIcon className='w-5 h-5' />
+					</Button>
+				)}
+			</form>
+
+			{/* Hide scrollbar */}
+			<style jsx>{`
+				.scrollbar-hide {
+					-ms-overflow-style: none;
+					scrollbar-width: none;
+				}
+				.scrollbar-hide::-webkit-scrollbar {
+					display: none;
+				}
+			`}</style>
 		</div>
 	);
 
+	// === Animation helpers ===
 	function roasterThinking(): void {
-		// If already thinking, do nothing
-		if (thinkingInterval) return;
-
+		if (thinkingInterval) {
+			return;
+		}
 		const speed = 300;
-
 		thinkingInterval = setInterval(() => {
 			setRoasterImage((prev) =>
 				prev === 'thinking_1' ? 'thinking_2' : 'thinking_1'
@@ -155,17 +246,13 @@ export default function ChatBox(): JSX.Element {
 	}
 
 	function roasterTalking(numberOfWords: number = 10): void {
-		const speed = 150;
-
-		// Stop thinking before talking
 		if (thinkingInterval) {
 			clearInterval(thinkingInterval);
 			thinkingInterval = null;
 		}
 
-		// Start with talking animation
 		setRoasterImage('talking');
-
+		const speed = 100;
 		let count = 0;
 		const cycles = Math.round(numberOfWords / 2);
 
@@ -174,7 +261,6 @@ export default function ChatBox(): JSX.Element {
 				prev === 'neutral' ? 'talking' : 'neutral'
 			);
 			count++;
-
 			if (count >= cycles * 2) {
 				clearInterval(talkInterval);
 				setRoasterImage('neutral');
