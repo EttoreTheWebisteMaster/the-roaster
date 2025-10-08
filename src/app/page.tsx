@@ -156,8 +156,8 @@ export default function ChatBox() {
 				<Image
 					src={`/the_roaster_${loadedImage}.png`}
 					alt='The Roaster'
-					width={400}
-					height={800}
+					width={700}
+					height={700}
 					priority
 					className='rounded-lg'
 				/>
@@ -166,14 +166,14 @@ export default function ChatBox() {
 			{/* Chat container */}
 			<div
 				ref={chatContainerRef}
-				className='flex flex-col w-full max-w-[400px] flex-grow px-4 pt-4 mb-24 space-y-6 overflow-y-auto scrollbar-hide'
+				className='flex flex-col w-full max-w-[700px] flex-grow px-4 pt-4 mb-24 space-y-6 overflow-y-auto scrollbar-hide'
 			>
 				{history.map((msg, idx) => (
 					<div key={idx} className='flex flex-col'>
 						<div
 							className={`text-sm mb-1 ${
 								msg.role === 'user'
-									? 'text-red-800 mr-2 text-right'
+									? 'text-red-700 mr-2 text-right'
 									: 'text-gray-700 ml-2 text-left'
 							}`}
 						>
@@ -182,7 +182,7 @@ export default function ChatBox() {
 						<div
 							className={`px-4 py-3 font-semibold text-xl rounded-lg max-w-[80%] break-words ${
 								msg.role === 'user'
-									? 'bg-red-800 text-white self-end'
+									? 'bg-red-700 text-white self-end'
 									: 'bg-gray-950 text-white self-start'
 							}`}
 						>
@@ -195,7 +195,7 @@ export default function ChatBox() {
 			{/* Input fixed at bottom */}
 			<form
 				onSubmit={handleSend}
-				className='flex flex-row gap-2 w-full max-w-[400px] fixed bottom-0 pb-8 bg-white px-4 mx-auto'
+				className='flex flex-row gap-2 w-full max-w-[700px] fixed bottom-0 pb-8 bg-white px-4 mx-auto'
 			>
 				<Input
 					ref={inputRef}
@@ -206,13 +206,13 @@ export default function ChatBox() {
 						isLoading ? 'The Roaster is thinking...' : 'Roast me...'
 					}
 					disabled={isLoading}
-					className='px-4 py-2 h-[52px] bg-gray-100 flex-grow rounded-full disabled:bg-transparent outline-none w-full max-w-[300px] sm:max-w-[400px]'
+					className='px-4 py-2 h-[52px] bg-gray-100 flex-grow rounded-full disabled:bg-transparent outline-none w-full max-w-[300px] sm:max-w-[700px]'
 				/>
 				{!isLoading && (
 					<Button
 						type='submit'
 						disabled={isLoading || !input.trim()}
-						className='p-4 rounded-full bg-red-800 font-bold text-xl text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+						className='p-4 rounded-full bg-red-700 font-bold text-xl text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
 					>
 						<PaperAirplaneIcon className='w-5 h-5' />
 					</Button>
