@@ -20,7 +20,7 @@ interface ChatMessage {
 	text: string;
 }
 
-export default function ChatBox(): JSX.Element {
+export default function ChatBox() {
 	let thinkingInterval: NodeJS.Timeout | null = null;
 
 	const [input, setInput] = useState<string>('');
