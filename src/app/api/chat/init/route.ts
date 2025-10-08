@@ -30,7 +30,7 @@ const SYSTEM_INSTRUCTION = `
         "Talk to me. What’s the worst decision you’ve made recently?"
 `;
 
-export async function GET(req: NextRequest) {
+export async function GET() {
 	try {
 		const response = await ai.models.generateContent({
 			model,
