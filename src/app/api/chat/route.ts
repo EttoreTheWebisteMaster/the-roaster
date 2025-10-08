@@ -84,6 +84,9 @@ export async function POST(req: NextRequest) {
 			contents: message,
 			config: {
 				systemInstruction: SYSTEM_INSTRUCTION,
+				thinkingConfig: {
+					thinkingBudget: 0,
+				},
 			},
 		});
 
