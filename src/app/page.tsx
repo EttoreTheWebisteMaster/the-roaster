@@ -195,7 +195,7 @@ export default function ChatBox() {
 			{/* Input fixed at bottom */}
 			<form
 				onSubmit={handleSend}
-				className='flex flex-row gap-2 w-full max-w-[700px] fixed bottom-0 pb-8 bg-white px-4 mx-auto'
+				className='flex flex-row gap-2 w-full max-w-[700px] justify-center fixed bottom-0 pb-8 bg-white px-4 mx-auto'
 			>
 				<Input
 					ref={inputRef}
@@ -206,7 +206,7 @@ export default function ChatBox() {
 						isLoading ? 'The Roaster is thinking...' : 'Roast me...'
 					}
 					disabled={isLoading}
-					className='px-4 py-2 h-[52px] bg-gray-100 flex-grow rounded-full disabled:bg-transparent outline-none w-full max-w-[300px] sm:max-w-[700px]'
+					className='px-4 py-2 h-[52px] bg-gray-100 flex-grow rounded-full disabled:bg-transparent outline-none w-full max-w-[700px]'
 				/>
 				{!isLoading && (
 					<Button
