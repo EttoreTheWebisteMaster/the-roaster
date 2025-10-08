@@ -3,6 +3,7 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { Input, Button } from '@headlessui/react';
 import Image from 'next/image';
+import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 // Define a type for the successful response from our API route
 interface ChatResponse {
@@ -56,39 +57,41 @@ export default function ChatBox(): JSX.Element {
 				// Throw error if the response is not ok
 				console.error('API Error:', data);
 				throw new Error(
-					'Go fuck yourself. I wont spend any more time with you.'
+					'You know what? I don\'t care.'
 				);
 			}
 
 			// Type check the successful response
 			const successData = data as ChatResponse;
 			setResponse(successData.reply);
+			roasterTalking(successData.reply.split(' ').length);
 		} catch (err) {
 			console.error('API Error:', err);
 			setResponse(
-				'Go fuck yourself. I wont spend any more time with you.'
+				'You know what? I don\'t care.'
 			);
+			roasterTalking();
 		} finally {
 			setIsLoading(false);
-			roasterTalking();
 		}
 	};
 
 	return (
-		<div className='p-24 w-full flex flex-col items-center'>
+		<div className='p-12 w-full flex flex-col items-center'>
 			<Image
 				src={`/the_roaster_${roasterImage}.png`}
 				alt='The Roaster'
 				width={400}
 				height={800}
+				className='rounded-lg'
 			/>
 
 			<div className='w-[400px] pt-8'>
 				{userInput !== '' ? (
 					<div className='w-3/4 flex flex-col items-end ml-auto'>
-						<div>Crowd</div>
-						<div className='bg-gray-700 text-white px-4 py-2 font-semibold text-2xl max-w-max opacity-60'>
-							{'"' + userInput + '"'}
+						<div className='mr-2'>Crowd</div>
+						<div className='bg-red-800 text-white px-4 py-3 font-semibold text-xl max-w-max rounded-lg'>
+							{userInput}
 						</div>
 					</div>
 				) : (
@@ -96,32 +99,43 @@ export default function ChatBox(): JSX.Element {
 				)}
 
 				{response !== '' ? (
-					<div className='w-3/4'>
-						<div>The Roaster</div>
-						<div className='bg-gray-700 text-white px-4 py-2 font-semibold text-2xl max-w-max opacity-60'>
-							{'"' + response + '"'}
+					<div className='w-3/4 mb-4 pb-18'>
+						<div className='ml-2'>The Roaster</div>
+						<div className='bg-gray-950 text-white px-4 py-3 font-semibold text-xl max-w-max rounded-lg'>
+							{response}
 						</div>
 					</div>
 				) : (
 					''
 				)}
 
-				<form onSubmit={handleSend} className='flex gap-4 mt-8'>
+				<form
+					onSubmit={handleSend}
+					className='flex gap-2 pt-2 fixed w-[400px] bottom-0 pb-8 bg-white'
+				>
 					<Input
 						type='text'
 						value={input}
 						onChange={handleInputChange}
-						placeholder='Roast me'
+						placeholder={
+							isLoading
+								? 'The Roaster is thinking...'
+								: 'Roast me...'
+						}
 						disabled={isLoading}
-						className='px-4 py-2 outline-1 grow'
+						className='px-6 py-2 h-[52px] bg-gray-100 grow rounded-full disabled:bg-transparent outline-0'
 					/>
-					<Button
-						type='submit'
-						disabled={isLoading || !input.trim()} // Also disable if input is empty
-						className='px-4 py-2 bg-red-800 text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
-					>
-						{isLoading ? 'Thinking...' : 'Tell'}
-					</Button>
+					{!isLoading ? (
+						<Button
+							type='submit'
+							disabled={isLoading || !input.trim()} // Also disable if input is empty
+							className='p-4 rounded-full bg-red-800 font-bold text-xl text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+						>
+							<PaperAirplaneIcon className='size-5' />
+						</Button>
+					) : (
+						''
+					)}
 				</form>
 			</div>
 		</div>
@@ -140,7 +154,7 @@ export default function ChatBox(): JSX.Element {
 		}, speed);
 	}
 
-	function roasterTalking(): void {
+	function roasterTalking(numberOfWords: number = 10): void {
 		const speed = 150;
 
 		// Stop thinking before talking
@@ -153,7 +167,7 @@ export default function ChatBox(): JSX.Element {
 		setRoasterImage('talking');
 
 		let count = 0;
-		const cycles = 10;
+		const cycles = Math.round(numberOfWords / 2);
 
 		const talkInterval = setInterval(() => {
 			setRoasterImage((prev) =>
