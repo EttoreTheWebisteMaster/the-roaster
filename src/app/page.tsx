@@ -150,7 +150,7 @@ export default function ChatBox() {
 	};
 
 	return (
-		<div className='flex flex-col items-center w-full h-full bg-white overflow-hidden'>
+		<div className='flex flex-col items-center w-full h-max bg-white overflow-hidden'>
 			{/* Image fixed at top */}
 			<div className='w-full flex justify-center p-4'>
 				<Image
