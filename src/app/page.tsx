@@ -108,7 +108,7 @@ export default function ChatBox() {
 		};
 
 		fetchInitialMessage();
-	});
+	}, []);
 
 	const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
 		setInput(e.target.value);
