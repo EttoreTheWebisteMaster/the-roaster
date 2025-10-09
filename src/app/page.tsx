@@ -24,7 +24,7 @@ export default function ChatBox() {
 	let thinkingInterval: NodeJS.Timeout | null = null;
 
 	const [input, setInput] = useState<string>('');
-	const [roasterImage, setRoasterImage] = useState<string>('thinking_1');
+	const [roasterImage, setRoasterImage] = useState<string>('lights_off');
 	const [isLoading, setIsLoading] = useState<boolean>(true);
 	const [history, setHistory] = useState<ChatMessage[]>([]);
 
