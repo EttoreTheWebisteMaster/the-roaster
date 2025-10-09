@@ -150,9 +150,9 @@ export default function ChatBox() {
 	};
 
 	return (
-		<div className='flex flex-col items-center w-full bg-white overflow-hidden'>
+		<div className='flex flex-col items-center w-full h-screen bg-white overflow-hidden'>
 			{/* Image fixed at top */}
-			<div className='w-full flex justify-center p-4 fixed top-0 bg-white z-10'>
+			<div className='w-full flex justify-center p-4 top-0 bg-white z-10 relative'>
 				<Image
 					src={`/the_roaster_${loadedImage}.png`}
 					alt='The Roaster'
@@ -166,7 +166,7 @@ export default function ChatBox() {
 			{/* Chat container */}
 			<div
 				ref={chatContainerRef}
-				className='flex flex-col w-full max-w-[700px] flex-grow px-4 mt-114 mb-24 space-y-6 overflow-y-auto scrollbar-hide'
+				className='flex flex-col w-full max-w-[700px] flex-grow px-4 pt-2 mb-24 space-y-6 overflow-y-auto scrollbar-hide'
 			>
 				{history.map((msg, idx) => (
 					<div key={idx} className='flex flex-col'>
