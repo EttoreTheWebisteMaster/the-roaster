@@ -89,8 +89,6 @@ export default function ChatBox() {
 
 	// Fetch the first AI message on mount
 	useEffect(() => {
-		roasterThinking();
-
 		const fetchInitialMessage = async () => {
 			try {
 				const res = await fetch('/api/chat/init');
@@ -152,7 +150,7 @@ export default function ChatBox() {
 	return (
 		<div className='flex flex-col items-center w-full h-screen bg-white overflow-hidden'>
 			{/* Image fixed at top */}
-			<div className='w-full flex justify-center p-4 top-0 bg-white z-10 relative'>
+			<div className='w-full flex justify-center p-4 top-0 bg-white z-10 sticky'>
 				<Image
 					src={`/the_roaster_${loadedImage}.png`}
 					alt='The Roaster'
