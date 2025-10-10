@@ -28,11 +28,13 @@ export default function ChatBox() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [history, setHistory] = useState<ChatMessage[]>([]);
 	const [loadedImage, setLoadedImage] = useState(roasterImage);
+	const [imageHeight, setImageHeight] = useState(0); // ✅ dynamic image height
 
+	const imageContainerRef = useRef<HTMLDivElement | null>(null);
 	const chatContainerRef = useRef<HTMLDivElement | null>(null);
 	const inputRef = useRef<HTMLInputElement | null>(null);
 
-	// ✅ Fix viewport height on iPhone (100vh issue)
+	// ✅ Fix viewport height for iOS
 	useEffect(() => {
 		const setVH = () => {
 			const vh = window.innerHeight * 0.01;
@@ -42,6 +44,19 @@ export default function ChatBox() {
 		window.addEventListener('resize', setVH);
 		return () => window.removeEventListener('resize', setVH);
 	}, []);
+
+	// ✅ Measure image container height dynamically
+	useEffect(() => {
+		const updateHeight = () => {
+			if (imageContainerRef.current) {
+				setImageHeight(imageContainerRef.current.offsetHeight);
+			}
+		};
+
+		updateHeight();
+		window.addEventListener('resize', updateHeight);
+		return () => window.removeEventListener('resize', updateHeight);
+	}, [loadedImage]);
 
 	useEffect(() => {
 		const img = new window.Image();
@@ -143,12 +158,15 @@ export default function ChatBox() {
 		<div
 			className='flex flex-col items-center w-full overflow-hidden'
 			style={{
-				height: 'calc(var(--vh, 1vh) * 100)', // ✅ true screen height
+				height: 'calc(var(--vh, 1vh) * 100)',
 				backgroundColor: 'white',
 			}}
 		>
-			{/* ✅ Fixed Image on top */}
-			<div className='fixed top-0 w-full flex justify-center bg-white z-10 p-4'>
+			{/* ✅ Fixed image container */}
+			<div
+				ref={imageContainerRef}
+				className='fixed top-0 w-full flex justify-center bg-white z-10 p-4'
+			>
 				<Image
 					src={`/the_roaster_${loadedImage}.png`}
 					alt='The Roaster'
@@ -156,13 +174,20 @@ export default function ChatBox() {
 					height={700}
 					className='w-full max-w-[700px] h-auto object-contain'
 					priority
+					onLoad={() => {
+						if (imageContainerRef.current)
+							setImageHeight(
+								imageContainerRef.current.offsetHeight
+							);
+					}}
 				/>
 			</div>
 
-			{/* ✅ Chat container scrollable below image */}
+			{/* ✅ Chat container with dynamic padding-top */}
 			<div
 				ref={chatContainerRef}
-				className='flex flex-col w-full max-w-[700px] px-4 pt-[460px] pb-24 space-y-6 overflow-y-auto scrollbar-hide flex-grow'
+				className='flex flex-col w-full max-w-[700px] px-4 pb-24 space-y-6 overflow-y-auto scrollbar-hide flex-grow'
+				style={{ paddingTop: `${imageHeight + 16}px` }} // ✅ +16px for safe spacing
 			>
 				{history.map((msg, idx) => (
 					<div key={idx} className='flex flex-col'>
@@ -188,7 +213,7 @@ export default function ChatBox() {
 				))}
 			</div>
 
-			{/* ✅ Fixed input at bottom */}
+			{/* ✅ Fixed input */}
 			<form
 				onSubmit={handleSend}
 				className='fixed bottom-0 w-full max-w-[700px] flex gap-2 items-center bg-white px-4 pb-8 z-10'
