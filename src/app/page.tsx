@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { Input, Button } from '@headlessui/react';
 import Image from 'next/image';
-import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
+import { ArrowPathIcon, PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
 interface ChatResponse {
 	reply: string;
@@ -34,6 +34,8 @@ export default function ChatBox() {
 	const chatContainerRef = useRef<HTMLDivElement | null>(null);
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const audioRef = useRef<HTMLAudioElement | null>(null);
+	const errorRef = useRef<HTMLDivElement | null>(null);
+	const formRef = useRef<HTMLFormElement | null>(null);
 
 	// Play audio in background
 	useEffect(() => {
@@ -133,14 +135,14 @@ export default function ChatBox() {
 			try {
 				const res = await fetch('/api/chat/init');
 				const data = await res.json();
-				const firstMessage =
-					data.firstMessage || 'How are you doing today?';
+				const firstMessage = data.firstMessage;
 				roasterTalking(firstMessage.split(' ').length);
 				printAIMessage(firstMessage);
 			} catch {
-				const fallback = 'How are you doing today?';
-				roasterTalking(fallback.split(' ').length);
-				printAIMessage(fallback);
+				roasterTalking(-1);
+
+				if (errorRef.current) errorRef.current.style.display = 'flex';
+				if (formRef.current) formRef.current.style.display = 'none';
 			}
 		};
 		fetchInitialMessage();
@@ -172,8 +174,11 @@ export default function ChatBox() {
 			roasterTalking(aiReply.split(' ').length);
 			printAIMessage(aiReply);
 		} catch {
-			roasterTalking();
-			printAIMessage("You know what? I don't care.");
+			printAIMessage('That’s all for now. See you next time.');
+			roasterTalking(-1);
+
+			if (errorRef.current) errorRef.current.style.display = 'flex';
+			if (formRef.current) formRef.current.style.display = 'none';
 		}
 	};
 
@@ -243,12 +248,34 @@ export default function ChatBox() {
 						</div>
 					</div>
 				))}
+
+				{/* Error */}
+				<div
+					className='flex-col w-full items-center hidden mt-6'
+					ref={errorRef}
+				>
+					<p className='mb-4'>
+						Not able to roast you at the moment. Try again later.
+					</p>
+					<Button
+						className='px-4 py-2 rounded-full bg-red-700 font-bold text-lg text-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+						onClick={() => {
+							location.reload();
+						}}
+					>
+						<span className='flex items-center'>
+							Reload page&nbsp;
+							<ArrowPathIcon className='size-4' />
+						</span>
+					</Button>
+				</div>
 			</div>
 
 			{/* Fixed input */}
 			<form
 				onSubmit={handleSend}
 				className='fixed bottom-0 w-full max-w-[700px] flex gap-2 items-center bg-white px-4 pb-8 z-10'
+				ref={formRef}
 			>
 				<Input
 					ref={inputRef}
@@ -300,18 +327,26 @@ export default function ChatBox() {
 			clearInterval(thinkingInterval);
 			thinkingInterval = null;
 		}
-		setRoasterImage('talking');
+		if (numberOfWords != -1) {
+			setRoasterImage('talking');
+		}
+
 		const speed = 100;
 		let count = 0;
 		const cycles = Math.round(numberOfWords / 2);
 		const talkInterval = setInterval(() => {
-			setRoasterImage((prev) =>
-				prev === 'neutral' ? 'talking' : 'neutral'
-			);
-			count++;
-			if (count >= cycles * 2) {
+			if (numberOfWords == -1) {
 				clearInterval(talkInterval);
-				setRoasterImage('neutral');
+				setRoasterImage('lights_off');
+			} else {
+				setRoasterImage((prev) =>
+					prev === 'neutral' ? 'talking' : 'neutral'
+				);
+				count++;
+				if (count >= cycles * 2) {
+					clearInterval(talkInterval);
+					setRoasterImage('neutral');
+				}
 			}
 		}, speed);
 	}
