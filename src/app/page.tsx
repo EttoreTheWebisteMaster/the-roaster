@@ -23,15 +23,25 @@ interface ChatMessage {
 export default function ChatBox() {
 	let thinkingInterval: NodeJS.Timeout | null = null;
 
-	const [input, setInput] = useState<string>('');
-	const [roasterImage, setRoasterImage] = useState<string>('lights_off');
-	const [isLoading, setIsLoading] = useState<boolean>(true);
+	const [input, setInput] = useState('');
+	const [roasterImage, setRoasterImage] = useState('lights_off');
+	const [isLoading, setIsLoading] = useState(true);
 	const [history, setHistory] = useState<ChatMessage[]>([]);
+	const [loadedImage, setLoadedImage] = useState(roasterImage);
 
 	const chatContainerRef = useRef<HTMLDivElement | null>(null);
 	const inputRef = useRef<HTMLInputElement | null>(null);
 
-	const [loadedImage, setLoadedImage] = useState(roasterImage);
+	// ✅ Fix viewport height on iPhone (100vh issue)
+	useEffect(() => {
+		const setVH = () => {
+			const vh = window.innerHeight * 0.01;
+			document.documentElement.style.setProperty('--vh', `${vh}px`);
+		};
+		setVH();
+		window.addEventListener('resize', setVH);
+		return () => window.removeEventListener('resize', setVH);
+	}, []);
 
 	useEffect(() => {
 		const img = new window.Image();
@@ -39,28 +49,21 @@ export default function ChatBox() {
 		img.onload = () => setLoadedImage(roasterImage);
 	}, [roasterImage]);
 
-
-	// Focus input whenever AI finishes
 	useEffect(() => {
-		if (!isLoading && inputRef.current) {
-			inputRef.current.focus();
-		}
+		if (!isLoading && inputRef.current) inputRef.current.focus();
 	}, [isLoading]);
 
-	// Scroll to bottom helper
-	const scrollToBottom = (): void => {
+	const scrollToBottom = () => {
 		if (chatContainerRef.current) {
 			chatContainerRef.current.scrollTop =
 				chatContainerRef.current.scrollHeight;
 		}
 	};
 
-	// Auto-scroll when messages are added
 	useEffect(() => {
 		scrollToBottom();
 	}, [history]);
 
-	// === Word-by-word printing only for AI messages ===
 	const printAIMessage = (text: string) => {
 		const words = text.split(' ');
 		let currentText = '';
@@ -87,32 +90,29 @@ export default function ChatBox() {
 		}, 100);
 	};
 
-	// Fetch the first AI message on mount
 	useEffect(() => {
 		const fetchInitialMessage = async () => {
 			try {
 				const res = await fetch('/api/chat/init');
-				const data: { firstMessage: string } = await res.json();
+				const data = await res.json();
 				const firstMessage =
 					data.firstMessage || 'How are you doing today?';
 				roasterTalking(firstMessage.split(' ').length);
 				printAIMessage(firstMessage);
-			} catch (err) {
-				console.error('Failed to load initial message', err);
+			} catch {
 				const fallback = 'How are you doing today?';
 				roasterTalking(fallback.split(' ').length);
 				printAIMessage(fallback);
 			}
 		};
-
 		fetchInitialMessage();
 	}, []);
 
-	const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+	const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
 		setInput(e.target.value);
 	};
 
-	const handleSend = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+	const handleSend = async (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		if (!input.trim()) return;
 
@@ -120,8 +120,6 @@ export default function ChatBox() {
 		setInput('');
 		roasterThinking();
 		setIsLoading(true);
-
-		// Add user message instantly
 		setHistory((prev) => [...prev, { role: 'user', text: userMessage }]);
 
 		try {
@@ -131,40 +129,40 @@ export default function ChatBox() {
 				body: JSON.stringify({ message: userMessage, history }),
 			});
 
-			const data: ChatResponse | { error: string } =
-				await apiResponse.json();
-
-			if (!apiResponse.ok)
-				throw new Error("You know what? I don't care.");
-
-			const aiReply = (data as ChatResponse).reply;
+			const data: ChatResponse = await apiResponse.json();
+			const aiReply = data.reply;
 			roasterTalking(aiReply.split(' ').length);
 			printAIMessage(aiReply);
-		} catch (err) {
-			console.error(err);
+		} catch {
 			roasterTalking();
 			printAIMessage("You know what? I don't care.");
 		}
 	};
 
 	return (
-		<div className='flex flex-col items-center w-full h-screen bg-white overflow-hidden'>
-			{/* Image fixed at top */}
-			<div className='w-full flex justify-center p-4 top-0 bg-white z-10 sticky'>
+		<div
+			className='flex flex-col items-center w-full overflow-hidden'
+			style={{
+				height: 'calc(var(--vh, 1vh) * 100)', // ✅ true screen height
+				backgroundColor: 'white',
+			}}
+		>
+			{/* ✅ Fixed Image on top */}
+			<div className='fixed top-0 w-full flex justify-center bg-white z-10 p-4'>
 				<Image
 					src={`/the_roaster_${loadedImage}.png`}
 					alt='The Roaster'
 					width={700}
 					height={700}
+					className='w-full max-w-[700px] h-auto object-contain'
 					priority
-					className='rounded-lg'
 				/>
 			</div>
 
-			{/* Chat container */}
+			{/* ✅ Chat container scrollable below image */}
 			<div
 				ref={chatContainerRef}
-				className='flex flex-col w-full max-w-[700px] flex-grow px-4 pt-2 mb-24 space-y-6 overflow-y-auto scrollbar-hide'
+				className='flex flex-col w-full max-w-[700px] px-4 pt-[460px] pb-24 space-y-6 overflow-y-auto scrollbar-hide flex-grow'
 			>
 				{history.map((msg, idx) => (
 					<div key={idx} className='flex flex-col'>
@@ -190,10 +188,10 @@ export default function ChatBox() {
 				))}
 			</div>
 
-			{/* Input fixed at bottom */}
+			{/* ✅ Fixed input at bottom */}
 			<form
 				onSubmit={handleSend}
-				className='flex flex-row gap-2 w-full max-w-[700px] justify-center fixed bottom-0 pb-8 bg-white px-4 mx-auto'
+				className='fixed bottom-0 w-full max-w-[700px] flex gap-2 items-center bg-white px-4 pb-8 z-10'
 			>
 				<Input
 					ref={inputRef}
@@ -204,7 +202,7 @@ export default function ChatBox() {
 						isLoading ? 'The Roaster is thinking...' : 'Roast me...'
 					}
 					disabled={isLoading}
-					className='px-4 py-2 h-[52px] bg-gray-100 flex-grow rounded-full disabled:bg-transparent outline-none w-full max-w-[700px]'
+					className='px-4 py-2 h-[52px] bg-gray-100 flex-grow rounded-full disabled:bg-transparent outline-none'
 				/>
 				{!isLoading && (
 					<Button
@@ -217,7 +215,6 @@ export default function ChatBox() {
 				)}
 			</form>
 
-			{/* Hide scrollbar */}
 			<style jsx>{`
 				.scrollbar-hide {
 					-ms-overflow-style: none;
@@ -232,9 +229,7 @@ export default function ChatBox() {
 
 	// === Animation helpers ===
 	function roasterThinking(): void {
-		if (thinkingInterval) {
-			return;
-		}
+		if (thinkingInterval) return;
 		const speed = 300;
 		thinkingInterval = setInterval(() => {
 			setRoasterImage((prev) =>
@@ -248,12 +243,10 @@ export default function ChatBox() {
 			clearInterval(thinkingInterval);
 			thinkingInterval = null;
 		}
-
 		setRoasterImage('talking');
 		const speed = 100;
 		let count = 0;
 		const cycles = Math.round(numberOfWords / 2);
-
 		const talkInterval = setInterval(() => {
 			setRoasterImage((prev) =>
 				prev === 'neutral' ? 'talking' : 'neutral'
