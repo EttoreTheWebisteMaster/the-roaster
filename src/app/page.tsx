@@ -28,13 +28,36 @@ export default function ChatBox() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [history, setHistory] = useState<ChatMessage[]>([]);
 	const [loadedImage, setLoadedImage] = useState(roasterImage);
-	const [imageHeight, setImageHeight] = useState(0); // ✅ dynamic image height
+	const [imageHeight, setImageHeight] = useState(0); // dynamic image height
 
 	const imageContainerRef = useRef<HTMLDivElement | null>(null);
 	const chatContainerRef = useRef<HTMLDivElement | null>(null);
 	const inputRef = useRef<HTMLInputElement | null>(null);
+	const audioRef = useRef<HTMLAudioElement | null>(null);
 
-	// ✅ Fix viewport height for iOS
+	// Play audio in background
+	useEffect(() => {
+		const audio = new Audio('/audio/soundtrack.mp3');
+		audio.loop = true;
+		audio.volume = 0.3;
+		audioRef.current = audio;
+
+		const startAudio = () => {
+			audio.play().catch(() => console.log('Playback failed'));
+			// Remove listener after first play
+			window.removeEventListener('click', startAudio);
+		};
+
+		// Wait for any user interaction
+		window.addEventListener('click', startAudio);
+
+		return () => {
+			audio.pause();
+			window.removeEventListener('click', startAudio);
+		};
+	}, []);
+
+	// Fix viewport height for iOS
 	useEffect(() => {
 		const setVH = () => {
 			const vh = window.innerHeight * 0.01;
@@ -45,7 +68,7 @@ export default function ChatBox() {
 		return () => window.removeEventListener('resize', setVH);
 	}, []);
 
-	// ✅ Measure image container height dynamically
+	// Measure image container height dynamically
 	useEffect(() => {
 		const updateHeight = () => {
 			if (imageContainerRef.current) {
@@ -60,7 +83,7 @@ export default function ChatBox() {
 
 	useEffect(() => {
 		const img = new window.Image();
-		img.src = `/the_roaster_${roasterImage}.png`;
+		img.src = `/img/the_roaster_${roasterImage}.png`;
 		img.onload = () => setLoadedImage(roasterImage);
 	}, [roasterImage]);
 
@@ -162,13 +185,22 @@ export default function ChatBox() {
 				backgroundColor: 'white',
 			}}
 		>
-			{/* ✅ Fixed image container */}
+			{/* Audio player */}
+			<audio
+				ref={audioRef}
+				src='/audio/soundtrack.mp3'
+				loop
+				autoPlay
+				hidden
+			/>
+
+			{/* Fixed image container */}
 			<div
 				ref={imageContainerRef}
 				className='fixed top-0 w-full flex justify-center bg-white z-10 p-4'
 			>
 				<Image
-					src={`/the_roaster_${loadedImage}.png`}
+					src={`/img/the_roaster_${loadedImage}.png`}
 					alt='The Roaster'
 					width={700}
 					height={700}
@@ -183,11 +215,11 @@ export default function ChatBox() {
 				/>
 			</div>
 
-			{/* ✅ Chat container with dynamic padding-top */}
+			{/* Chat container with dynamic padding-top */}
 			<div
 				ref={chatContainerRef}
 				className='flex flex-col w-full max-w-[700px] px-4 pb-24 space-y-6 overflow-y-auto scrollbar-hide flex-grow'
-				style={{ paddingTop: `${imageHeight + 16}px` }} // ✅ +16px for safe spacing
+				style={{ paddingTop: `${imageHeight + 16}px` }} // +16px for safe spacing
 			>
 				{history.map((msg, idx) => (
 					<div key={idx} className='flex flex-col'>
@@ -213,7 +245,7 @@ export default function ChatBox() {
 				))}
 			</div>
 
-			{/* ✅ Fixed input */}
+			{/* Fixed input */}
 			<form
 				onSubmit={handleSend}
 				className='fixed bottom-0 w-full max-w-[700px] flex gap-2 items-center bg-white px-4 pb-8 z-10'
